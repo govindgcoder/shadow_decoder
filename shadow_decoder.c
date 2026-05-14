@@ -25,7 +25,7 @@ char* acceptUserInput(char *initial_buffer, size_t *capacity, size_t *length){
       temp_buffer = realloc(temp_buffer, *capacity);
       if (temp_buffer == NULL) {
         printf("reallocation failed!!!\n");
-        return 0;
+        return NULL;
       } else {
         buffer = temp_buffer;
       }
@@ -40,10 +40,11 @@ char* acceptUserInput(char *initial_buffer, size_t *capacity, size_t *length){
 // to decode the accepted data from b64 to .bmp
 uint8_t* decodeB64(char *buffer, uint8_t *binary_buffer, size_t *capacity, size_t *binary_length, size_t length){
   size_t cursor = 0;
+  if(length%4!=0) {printf("invalid input length!\n"); return NULL;}
+
   while (cursor < length) {
     
-    if(length%4!=0) {printf("invalid input length"); return 0;}
-
+    
     char c1 = buffer[cursor];
     char c2 = buffer[cursor + 1];
     char c3 = buffer[cursor + 2];
@@ -53,8 +54,9 @@ uint8_t* decodeB64(char *buffer, uint8_t *binary_buffer, size_t *capacity, size_
     char val;
     
     size_t paddings = 0;
-
-    uint8_t packed = 0;
+    if(c4=='=' && c3=='=') paddings=2;
+    else if(c4=='=') paddings=1;    
+    uint32_t packed = 0;
     uint16_t b64_val;
     for(int i=0;i<4;i++){
       switch (i) {
@@ -76,7 +78,6 @@ uint8_t* decodeB64(char *buffer, uint8_t *binary_buffer, size_t *capacity, size_
         } else if (val=='/') {
           b64_val = 63;
         } else if (val=='=') {
-          packed = (packed << 6);
           continue;
         } else {
           b64_val = 0;
@@ -85,14 +86,14 @@ uint8_t* decodeB64(char *buffer, uint8_t *binary_buffer, size_t *capacity, size_
       packed = (packed << 6) | b64_val;
     }
     
-    for(int i = 0; i<3; i++){
+    for(int i = 0; i<3-paddings; i++){
       if((*binary_length)+1>=*capacity){
         uint8_t *temp_buffer = binary_buffer;
         (*capacity)*=2;
         temp_buffer = realloc(temp_buffer, *capacity);
         if (temp_buffer == NULL) {
           printf("reallocation failed!!!\n");
-          return 0;
+          return NULL;
         } else {
           binary_buffer = temp_buffer;
         }
@@ -101,8 +102,6 @@ uint8_t* decodeB64(char *buffer, uint8_t *binary_buffer, size_t *capacity, size_
     }
   }
   
-  // gotta terminate
-  binary_buffer[*binary_length]='\0';
   return binary_buffer;
 }
 
@@ -110,10 +109,10 @@ uint8_t* decodeB64(char *buffer, uint8_t *binary_buffer, size_t *capacity, size_
 #pragma pack(1)
 typedef struct BMPHeader {
   uint16_t type;
-  uint8_t size;
+  uint32_t size;
   uint16_t reserved1;
   uint16_t reserved2;
-  size_t offset;
+  uint32_t offset;
 } BMPHeader;
 
 // extract offset from header of .bmp
@@ -145,11 +144,11 @@ int main(int argc, char *argv[]){
   if(argc>1) hidden_offset = atoi(argv[1]);
 
   if (pixel_data_offset>0){
-    if (pixel_data_offset + hidden_offset >= binary_length) {
+    if (pixel_data_offset + hidden_offset < binary_length) {
       uint8_t *target = binary_buffer+pixel_data_offset+hidden_offset;
       size_t max_len = binary_length - (pixel_data_offset + hidden_offset);
 
-      for(size_t i = 0; i < max_len && target[i] != '\0'; i++) {  
+      for(size_t i = 0; i < max_len; i++) {  
         putchar(target[i]);
       }
     } else {
