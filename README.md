@@ -1,6 +1,6 @@
 # shadow_decoder
 
-A lightweight, zero-dependency C CLI tool designed to reconstruct a `.bmp` image completely in RAM from a dynamic Base64 stream, then parse its headers to extract a hidden steganographic payload.
+A C CLI tool developed to reconstruct a `.bmp` image completely in RAM from a dynamic Base64 stream, then parse its headers to extract a hidden steganographic payload.
 
 > A small mini-project i did to practice bit shifting and memory management in C :)
 
